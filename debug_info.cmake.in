@@ -1,0 +1,29 @@
+#[[
+ (c) Alexander Voronkov 2017-2020
+ This is an example for the "C++ Russia Piter 2020" conference talk
+ The author doesn't guarantee anything, use at your own risk ;-) 
+#]]
+
+if(CMAKE_INSTALL_DO_STRIP)
+    execute_process(COMMAND "@READELF_EXECUTABLE@"
+                    -W -n "$<TARGET_FILE:@target@>"
+                    RESULT_VARIABLE ret  OUTPUT_VARIABLE readelf_out)
+    if(ret)
+        message(FATAL_ERROR "readelf run failed")
+    endif()
+    string(REPLACE "\n" ";" readelf_out ${readelf_out})
+    set(build_id_dir)
+    set(build_id_filename)
+    foreach(line IN LISTS readelf_out)
+        if(line MATCHES "NT_GNU_BUILD_ID.*Build ID: ([0-9a-f][0-9a-f])([0-9a-f]+)$")
+            set(build_id_dir ${CMAKE_MATCH_1})
+            set(build_id_filename ${CMAKE_MATCH_2})
+            break()
+        endif()
+    endforeach()
+    set(out_dir $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/debug/.build-id/${build_id_dir})
+    file(MAKE_DIRECTORY ${out_dir})
+    execute_process(COMMAND "@CMAKE_STRIP@"
+        --only-keep-debug "$<TARGET_FILE:@target@>"
+        -o "${out_dir}/${build_id_filename}.debug")
+endif()
